@@ -52,6 +52,44 @@ describe("Money Domain Class", () => {
 
       expect(() => m1.add(m2)).toThrow(CurrencyMismatchError);
     });
+
+        it("subtracts and negates", () => {
+      const m = Money.from({ amount: "25.00", currency: "BRL" });
+      const ten = Money.from({ amount: "10.00", currency: "BRL" });
+
+      expect(m.subtract(ten).toString()).toBe("BRL 15.00");
+      expect(ten.negate().isNegative()).toBe(true);
+    });
+
+    it("compares amounts", () => {
+      const ten = Money.from({ amount: "10.00", currency: "BRL" });
+      const twenty = Money.from({ amount: "20.00", currency: "BRL" });
+
+      expect(ten.isLessThan(twenty)).toBe(true);
+      expect(twenty.isLessThan(ten)).toBe(false);
+      expect(ten.equals(Money.from({ amount: "10.00", currency: "BRL" }))).toBe(true);
+    });
+
+    it("treats zero as not positive", () => {
+      expect(Money.zero("BRL").isZero()).toBe(true);
+      expect(Money.zero("BRL").isPositive()).toBe(false);
+      expect(Money.from({ amount: "10.00", currency: "BRL" }).isPositive()).toBe(true);
+    });
+
+    it("serializes to MoneyProps", () => {
+      const m = Money.from({ amount: "25.00", currency: "BRL" });
+      expect(m.toJSON()).toEqual({ amount: "25.00", currency: "BRL" });
+    });
+
+
+    it("throws when comparing different currencies", () => {
+    const brl = Money.from({ amount: "10.00", currency: "BRL" });
+    const usd = Money.from({ amount: "10.00", currency: "USD" });
+
+    expect(() => brl.isLessThan(usd)).toThrow(CurrencyMismatchError);
+    expect(() => brl.equals(usd)).toThrow(CurrencyMismatchError);
+});
+
   });
 
 });
