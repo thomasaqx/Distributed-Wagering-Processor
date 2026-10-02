@@ -42,6 +42,20 @@ services:
     depends_on:
       - sqs
 
+  # One-shot job: applies pending migrations before any API instance starts.
+  migrate:
+    build: .
+    command: ["bun", "run", "migration:up"]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: wagering
+      DB_PASSWORD: wagering
+      DB_NAME: wagering
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build: .
     environment:
@@ -61,6 +75,8 @@ services:
       postgres:
         condition: service_healthy
       sqs-init:
+        condition: service_completed_successfully
+      migrate:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "bun", "-e", "const r = await fetch('http://localhost:3000/health/live'); process.exit(r.ok ? 0 : 1)"]

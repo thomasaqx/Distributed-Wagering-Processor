@@ -3,10 +3,16 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "start": "bun run src/main.ts",
     "typecheck": "tsc --noEmit",
-    "start": "bun run src/main.ts"
+    "migration:up": "bun run src/infrastructure/database/migrate.ts up",
+    "migration:down": "bun run src/infrastructure/database/migrate.ts down"
   },
   "dependencies": {
+    "@mikro-orm/core": "7.2.3",
+    "@mikro-orm/migrations": "7.2.3",
+    "@mikro-orm/nestjs": "7.1.0",
+    "@mikro-orm/postgresql": "7.2.3",
     "@nestjs/common": "^11.2.7",
     "@nestjs/core": "^11.2.7",
     "@nestjs/platform-express": "^11.2.7",
