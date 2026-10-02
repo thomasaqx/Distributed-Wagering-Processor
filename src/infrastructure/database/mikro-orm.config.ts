@@ -1,6 +1,8 @@
 import { defineConfig } from "@mikro-orm/postgresql";
 import { Migrator } from "@mikro-orm/migrations";
 import { Migration20261002120000InitialSchema } from "./migrations/Migration20261002120000InitialSchema";
+import { WalletLedgerEntrySchema } from "./schemas/wallet-ledger-entry.schema";
+import { WalletSchema } from "./schemas/wallet.schema";
 
 export function createOrmConfig() {
   return defineConfig({
@@ -9,12 +11,10 @@ export function createOrmConfig() {
     user: process.env.DB_USER ?? "wagering",
     password: process.env.DB_PASSWORD ?? "wagering",
     dbName: process.env.DB_NAME ?? "wagering",
-    entities: [],
-    discovery: { warnWhenNoEntities: false },
+    entities: [WalletSchema, WalletLedgerEntrySchema],
     extensions: [Migrator],
     migrations: {
       tableName: "schema_migrations",
-      // Explicit list instead of glob discovery: deterministic under Bun and in the Docker image.
       migrationsList: [
         { name: "Migration20261002120000InitialSchema", class: Migration20261002120000InitialSchema },
       ],

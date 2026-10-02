@@ -6,9 +6,11 @@
     "start": "bun run src/main.ts",
     "typecheck": "tsc --noEmit",
     "migration:up": "bun run src/infrastructure/database/migrate.ts up",
-    "migration:down": "bun run src/infrastructure/database/migrate.ts down"
+    "migration:down": "bun run src/infrastructure/database/migrate.ts down",
+    "test:integration": "bun test ./test/integration"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1146.0",
     "@mikro-orm/core": "7.2.3",
     "@mikro-orm/migrations": "7.2.3",
     "@mikro-orm/nestjs": "7.1.0",
