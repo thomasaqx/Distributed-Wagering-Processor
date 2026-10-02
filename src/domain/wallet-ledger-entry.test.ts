@@ -32,4 +32,32 @@ describe("WalletLedgerEntry", () => {
       }),
     ).toThrow(InvalidLedgerEntryError);
   });
+
+  it("creates a balanced credit", () => {
+    const entry = WalletLedgerEntry.create({
+      id: "entry-1",
+      walletId: "wallet-1",
+      transactionId: "tx-1",
+      direction: LedgerDirection.Credit,
+      money: brl("50.00"),
+      balanceBefore: brl("20.00"),
+      balanceAfter: brl("70.00"),
+    });
+
+    expect(entry.isBalanced()).toBe(true);
+  });
+
+  it("rejects a zero amount", () => {
+    expect(() =>
+      WalletLedgerEntry.create({
+        id: "entry-1",
+        walletId: "wallet-1",
+        transactionId: "tx-1",
+        direction: LedgerDirection.Credit,
+        money: brl("0.00"),
+        balanceBefore: brl("20.00"),
+        balanceAfter: brl("20.00"),
+      }),
+    ).toThrow(InvalidLedgerEntryError);
+  });
 });
