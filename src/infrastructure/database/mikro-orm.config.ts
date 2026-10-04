@@ -1,6 +1,8 @@
 import { defineConfig } from "@mikro-orm/postgresql";
 import { Migrator } from "@mikro-orm/migrations";
 import { Migration20261002120000InitialSchema } from "./migrations/Migration20261002120000InitialSchema";
+import { InboxMessageSchema, OutboxMessageSchema } from "./schemas/messaging.schema";
+import { WagerTransactionSchema } from "./schemas/wager-transaction.schema";
 import { WalletLedgerEntrySchema } from "./schemas/wallet-ledger-entry.schema";
 import { WalletSchema } from "./schemas/wallet.schema";
 
@@ -11,7 +13,7 @@ export function createOrmConfig() {
     user: process.env.DB_USER ?? "wagering",
     password: process.env.DB_PASSWORD ?? "wagering",
     dbName: process.env.DB_NAME ?? "wagering",
-    entities: [WalletSchema, WalletLedgerEntrySchema],
+    entities: [WalletSchema, WalletLedgerEntrySchema, WagerTransactionSchema, OutboxMessageSchema, InboxMessageSchema],
     extensions: [Migrator],
     migrations: {
       tableName: "schema_migrations",
