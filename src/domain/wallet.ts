@@ -108,6 +108,25 @@ export class Wallet {
         return entry;
     }
 
+    /**
+     * The OPENING ledger entry (0.00 → initial balance) that explains a freshly opened wallet's
+     * balance. It does not move money again: `open` already set the balance and version 1.
+     */
+    openingEntry(transactionId: string): WalletLedgerEntry {
+        if (this._version !== 1) {
+            throw new InvalidWalletError(`wallet ${this.id} is not freshly opened`);
+        }
+        return WalletLedgerEntry.create({
+            id: crypto.randomUUID(),
+            walletId: this.id,
+            transactionId,
+            direction: LedgerDirection.Credit,
+            money: this._balance,
+            balanceBefore: Money.zero(this.currency),
+            balanceAfter: this._balance,
+        });
+    }
+
     get balance(): Money { return this._balance; }
     get version(): number { return this._version; }
     get updatedAt(): Date { return this._updatedAt; }
