@@ -49,6 +49,23 @@ export interface CreateWagerTransactionProps {
     referenceExternalTransactionId?: string;
 }
 
+export interface WagerTransactionState extends CreateWagerTransactionProps {
+    createdAt: Date;
+    status: WagerTransactionStatus;
+    referenceTransactionId?: string;
+    failureCode?: FailureCode;
+    processedAt?: Date;
+    observedBalance?: Money;
+}
+
+const TERMINAL_STATUSES: readonly WagerTransactionStatus[] = [
+    WagerTransactionStatus.Processed,
+    WagerTransactionStatus.Rejected,
+    WagerTransactionStatus.Failed,
+];
+
+const REVERSAL_KINDS: readonly WagerTransactionKind[] = [WagerTransactionKind.Refund, WagerTransactionKind.Rollback];
+
 export class WagerTransaction {
     private constructor(
         public readonly id: string,
@@ -65,17 +82,19 @@ export class WagerTransaction {
         public readonly referenceExternalTransactionId: string | undefined,
         public readonly createdAt: Date,
         private _status: WagerTransactionStatus,
+        private _referenceTransactionId?: string,
+        private _failureCode?: FailureCode,
+        private _processedAt?: Date,
+        private _observedBalance?: Money,
     ) { }
 
     static create(props: CreateWagerTransactionProps): WagerTransaction {
-        if (props.kind === WagerTransactionKind.Refund || props.kind === WagerTransactionKind.Rollback) {
-            if (props.referenceExternalTransactionId === undefined) {
-                throw new InvalidWagerTransactionError(props.kind + " requires referenceExternalTransactionId");
-            }
+        if (REVERSAL_KINDS.includes(props.kind) && props.referenceExternalTransactionId === undefined) {
+            throw new InvalidWagerTransactionError(props.kind + " requires referenceExternalTransactionId");
         }
 
-        if (!props.money.isPositive() && props.kind !== WagerTransactionKind.Loss){
-            throw new InvalidWagerTransactionError( props.kind + "amount must be positive");
+        if (!props.money.isPositive() && props.kind !== WagerTransactionKind.Loss) {
+            throw new InvalidWagerTransactionError(props.kind + " amount must be positive");
         }
 
         return new WagerTransaction(
@@ -96,5 +115,88 @@ export class WagerTransaction {
         );
     }
 
+    /** Reconstruction from persistence: no validation and no transition rules are applied. */
+    static rehydrate(state: WagerTransactionState): WagerTransaction {
+        return new WagerTransaction(
+            state.id,
+            state.providerId,
+            state.externalTransactionId,
+            state.idempotencyKey,
+            state.payloadHash,
+            state.walletId,
+            state.playerId,
+            state.roundId,
+            state.gameId,
+            state.kind,
+            state.money,
+            state.referenceExternalTransactionId,
+            state.createdAt,
+            state.status,
+            state.referenceTransactionId,
+            state.failureCode,
+            state.processedAt,
+            state.observedBalance,
+        );
+    }
+
+    // ---- transitions: PENDING -> PROCESSED | REJECTED | FAILED | PENDING_REFERENCE,
+    //      PENDING_REFERENCE -> PROCESSED | REJECTED | FAILED. Terminal states never change.
+
+    markProcessed(observedBalance: Money, at: Date, referenceTransactionId?: string): void {
+        this.assertNotTerminal();
+        this._status = WagerTransactionStatus.Processed;
+        this._observedBalance = observedBalance;
+        this._processedAt = at;
+        this._referenceTransactionId = referenceTransactionId;
+    }
+
+    markPendingReference(): void {
+        this.assertNotTerminal();
+        this._status = WagerTransactionStatus.PendingReference;
+    }
+
+    reject(code: FailureCode, observedBalance: Money, at: Date): void {
+        this.assertNotTerminal();
+        this._status = WagerTransactionStatus.Rejected;
+        this._failureCode = code;
+        this._observedBalance = observedBalance;
+        this._processedAt = at;
+    }
+
+    fail(code: FailureCode, at: Date): void {
+        this.assertNotTerminal();
+        this._status = WagerTransactionStatus.Failed;
+        this._failureCode = code;
+        this._processedAt = at;
+    }
+
+    // ---- domain queries
+
+    isTerminal(): boolean {
+        return TERMINAL_STATUSES.includes(this._status);
+    }
+
+    affectsBalance(): boolean {
+        return this.kind !== WagerTransactionKind.Loss;
+    }
+
+    requiresReference(): boolean {
+        return REVERSAL_KINDS.includes(this.kind);
+    }
+
+    matchesPayload(payloadHash: string): boolean {
+        return this.payloadHash === payloadHash;
+    }
+
+    private assertNotTerminal(): void {
+        if (this.isTerminal()) {
+            throw new InvalidTransactionStateError(`transaction ${this.id} is already ${this._status}`);
+        }
+    }
+
     get status(): WagerTransactionStatus { return this._status; }
+    get referenceTransactionId(): string | undefined { return this._referenceTransactionId; }
+    get failureCode(): FailureCode | undefined { return this._failureCode; }
+    get processedAt(): Date | undefined { return this._processedAt; }
+    get observedBalance(): Money | undefined { return this._observedBalance; }
 }
