@@ -72,6 +72,8 @@ What they cover:
 
 Every test that moves money ends by checking **wallet balance == balance rebuilt from the ledger** through the reconciliation use case. Waits are polling with a timeout, never fixed sleeps.
 
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/465552d2-f8b0-49c8-a1fc-f84241e0203e" />
+
 ## HTTP API
 
 | Method & path | Description |
@@ -110,7 +112,6 @@ Sending the same request again returns the same body with `"idempotentReplay": t
 <img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/296eaf5d-933d-4967-8e62-2b1730b13b0c" />
 <img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/8cc0283f-50c7-463b-b94a-6e2263a9f5eb" />
 <img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/63cf74ad-6c01-4e8b-8021-6522108dd36e" />
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/465552d2-f8b0-49c8-a1fc-f84241e0203e" />
 
 ### Status codes
 
