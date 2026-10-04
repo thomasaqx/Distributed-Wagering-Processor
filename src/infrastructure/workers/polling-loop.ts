@@ -1,10 +1,5 @@
 import { logger } from "../observability/logger";
 
-/**
- * Runs `tick` repeatedly: immediately again while it reports work done, otherwise after `idleMs`.
- * `stop()` resolves only after the in-flight tick has finished, so shutdown never cuts a
- * database transaction in half.
- */
 export class PollingLoop {
   private running = false;
   private timer: ReturnType<typeof setTimeout> | undefined;

@@ -115,7 +115,6 @@ export class WagerTransaction {
         );
     }
 
-    /** Reconstruction from persistence: no validation and no transition rules are applied. */
     static rehydrate(state: WagerTransactionState): WagerTransaction {
         return new WagerTransaction(
             state.id,
@@ -138,9 +137,6 @@ export class WagerTransaction {
             state.observedBalance,
         );
     }
-
-    // ---- transitions: PENDING -> PROCESSED | REJECTED | FAILED | PENDING_REFERENCE,
-    //      PENDING_REFERENCE -> PROCESSED | REJECTED | FAILED. Terminal states never change.
 
     markProcessed(observedBalance: Money, at: Date, referenceTransactionId?: string): void {
         this.assertNotTerminal();

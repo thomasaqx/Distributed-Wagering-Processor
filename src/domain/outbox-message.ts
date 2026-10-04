@@ -68,7 +68,6 @@ export class OutboxMessage {
     this._publishedAt = at;
   }
 
-  /** Exponential backoff: 1s, 2s, 4s, ... capped at 5 minutes. */
   scheduleRetry(now: Date): void {
     this._attempts += 1;
     const delay = Math.min(BASE_RETRY_DELAY_MS * 2 ** (this._attempts - 1), MAX_RETRY_DELAY_MS);

@@ -8,13 +8,9 @@ import {
 } from "./wager-transaction";
 
 export interface SettlementInput {
-  /** The incoming transaction, still PENDING or PENDING_REFERENCE. */
   transaction: WagerTransaction;
-  /** The wallet, already locked by the caller for the duration of the database transaction. */
   wallet: Wallet;
-  /** Transaction resolved by (providerId, referenceExternalTransactionId); undefined when not found. */
   reference?: WagerTransaction;
-  /** Whether a PROCESSED transaction of the same kind already reverses `reference`. */
   referenceAlreadyReversed: boolean;
   now: Date;
 }
@@ -34,10 +30,10 @@ const REVERSIBLE_KINDS: Record<WagerTransactionKind, readonly WagerTransactionKi
   [WagerTransactionKind.Opening]: [],
 };
 
-/**
- * Applies section 7 business rules to one transaction against a locked wallet. Pure domain logic:
- * it mutates the transaction (status) and the wallet (balance) and returns what happened; the
- * caller persists everything in one SQL transaction.
+/*
+  Applies section 7 business rules to one transaction against a locked wallet. Pure domain logic:
+  it mutates the transaction (status) and the wallet (balance) and returns what happened; the
+ caller persists everything in one SQL transaction.
  */
 export function settleWagerTransaction(input: SettlementInput): SettlementOutcome {
   const { transaction: tx, wallet, now } = input;

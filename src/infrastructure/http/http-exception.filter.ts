@@ -28,7 +28,6 @@ interface ErrorBody {
   error: { code: string; message: string };
 }
 
-/** Single place that turns exceptions into HTTP responses; stack traces never leave the process. */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -71,7 +70,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
   }
 }
 
-/** body-parser rejects invalid JSON / oversized bodies with plain errors carrying a 4xx `status`. */
 function bodyParserStatus(exception: unknown): number | undefined {
   if (exception instanceof Error && "status" in exception && typeof exception.status === "number") {
     return exception.status >= 400 && exception.status < 500 ? exception.status : undefined;
