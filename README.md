@@ -105,6 +105,13 @@ curl -s -X POST localhost:3000/wagering/transactions \
 
 Sending the same request again returns the same body with `"idempotentReplay": true`.
 
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/74c9b4cd-e4bb-41f4-a0cb-af81e3bb9ca1" />
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/0aafc93c-7503-4dfe-ad3a-c7b85419ecd6" />
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/296eaf5d-933d-4967-8e62-2b1730b13b0c" />
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/8cc0283f-50c7-463b-b94a-6e2263a9f5eb" />
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/63cf74ad-6c01-4e8b-8021-6522108dd36e" />
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/465552d2-f8b0-49c8-a1fc-f84241e0203e" />
+
 ### Status codes
 
 | Status | Meaning | Body |
@@ -120,6 +127,8 @@ Sending the same request again returns the same body with `"idempotentReplay": t
 | `503` | transient infrastructure failure (database down, wallet lock timeout): safe to retry | `TEMPORARILY_UNAVAILABLE` |
 
 Failure codes are listed in [ARCHITECTURE.md](ARCHITECTURE.md#failure-codes).
+![Uploading image.png…]()
+
 
 ## SQS input
 

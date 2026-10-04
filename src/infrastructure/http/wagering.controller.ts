@@ -11,8 +11,6 @@ interface StatusResponse {
   status(code: number): unknown;
 }
 
-// 200 applied, 422 business rejection (failureCode tells the provider why), 202 waiting for the
-// referenced transaction. A replay answers with the same status as the original request.
 const HTTP_STATUS_BY_RESULT: Record<WagerTransactionStatus, number> = {
   [WagerTransactionStatus.Processed]: 200,
   [WagerTransactionStatus.Rejected]: 422,
