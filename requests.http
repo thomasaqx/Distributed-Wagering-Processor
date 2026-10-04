@@ -1,0 +1,205 @@
+# Manual walkthrough of the API. Open in VS Code with the "REST Client" extension
+# (humao.rest-client) and click "Send Request" above each block, top to bottom.
+# Requires `docker compose up` running. Every run creates a fresh wallet, so keys never collide.
+
+@baseUrl = http://localhost:3000
+
+### 1. Readiness (PostgreSQL + SQS)
+GET {{baseUrl}}/health/ready
+
+### 2. Create a wallet with 100.00 BRL (records an internal OPENING credit)
+# @name createWallet
+POST {{baseUrl}}/wallets
+Content-Type: application/json
+
+{
+  "playerId": "{{$guid}}",
+  "initialBalance": { "amount": "100.00", "currency": "BRL" }
+}
+
+###
+@walletId = {{createWallet.response.body.id}}
+@playerId = {{createWallet.response.body.playerId}}
+
+### 3. BET 25.00 -> 200 PROCESSED, balance 75.00
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-bet-1
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-bet-1",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "fortune-chimp",
+  "kind": "BET",
+  "money": { "amount": "25.00", "currency": "BRL" }
+}
+
+### 4. Same request again -> 200, same transactionId, "idempotentReplay": true, balance still 75.00
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-bet-1
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-bet-1",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "fortune-chimp",
+  "kind": "BET",
+  "money": { "amount": "25.00", "currency": "BRL" }
+}
+
+### 5. Same key, different amount -> 409 IDEMPOTENCY_KEY_CONFLICT
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-bet-1
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-bet-1",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "fortune-chimp",
+  "kind": "BET",
+  "money": { "amount": "99.00", "currency": "BRL" }
+}
+
+### 6. BET larger than the balance -> 422 REJECTED, failureCode INSUFFICIENT_FUNDS
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-bet-big
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-bet-big",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "fortune-chimp",
+  "kind": "BET",
+  "money": { "amount": "500.00", "currency": "BRL" }
+}
+
+### 7. REFUND of a BET that has not arrived yet -> 202 PENDING_REFERENCE
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-refund-2
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-refund-2",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-2",
+  "gameId": "fortune-chimp",
+  "kind": "REFUND",
+  "referenceExternalTransactionId": "{{walletId}}-bet-2",
+  "money": { "amount": "10.00", "currency": "BRL" }
+}
+
+### 8. Now the referenced BET arrives -> 200, balance 65.00
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-bet-2
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-bet-2",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-2",
+  "gameId": "fortune-chimp",
+  "kind": "BET",
+  "money": { "amount": "10.00", "currency": "BRL" }
+}
+
+### 9. A few seconds later the worker settles the REFUND -> status PROCESSED, balance back to 75.00
+GET {{baseUrl}}/providers/provider-a/wagering/transactions/{{walletId}}-refund-2
+
+### 10. WIN 50.00 -> 200, balance 125.00
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-win-1
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-win-1",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "fortune-chimp",
+  "kind": "WIN",
+  "money": { "amount": "50.00", "currency": "BRL" }
+}
+
+### 11. ROLLBACK of the WIN -> 200, debits 50.00 back, balance 75.00
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-rollback-1
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-rollback-1",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "fortune-chimp",
+  "kind": "ROLLBACK",
+  "referenceExternalTransactionId": "{{walletId}}-win-1",
+  "money": { "amount": "50.00", "currency": "BRL" }
+}
+
+### 12. LOSS -> 200, balance unchanged, no ledger entry
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-loss-1
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-loss-1",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "fortune-chimp",
+  "kind": "LOSS",
+  "money": { "amount": "0.00", "currency": "BRL" }
+}
+
+### 13. Wallet
+GET {{baseUrl}}/wallets/{{walletId}}
+
+### 14. Ledger, first page of 3 (copy "nextCursor" into ?cursor= for the next page)
+GET {{baseUrl}}/wallets/{{walletId}}/ledger?limit=3
+
+### 15. Reconciliation -> "consistent": true
+POST {{baseUrl}}/wallets/{{walletId}}/reconciliation
+
+### 16. Invalid input: OPENING is internal -> 400
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+Idempotency-Key: provider-a:{{walletId}}-opening
+
+{
+  "providerId": "provider-a",
+  "externalTransactionId": "{{walletId}}-opening",
+  "playerId": "{{playerId}}",
+  "walletId": "{{walletId}}",
+  "roundId": "round-1",
+  "gameId": "fortune-chimp",
+  "kind": "OPENING",
+  "money": { "amount": "10.00", "currency": "BRL" }
+}
+
+### 17. Invalid input: missing Idempotency-Key -> 400
+POST {{baseUrl}}/wagering/transactions
+Content-Type: application/json
+
+{}
+
+### 18. Metrics
+GET {{baseUrl}}/metrics
