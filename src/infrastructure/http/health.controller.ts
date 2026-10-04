@@ -1,6 +1,6 @@
 import { GetQueueUrlCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { MikroORM } from "@mikro-orm/postgresql";
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import { Controller, Get, HttpStatus, Res } from "@nestjs/common";
 import { WAGER_TRANSACTIONS_QUEUE } from "../messaging/sqs.module";
 
 type CheckStatus = "up" | "down";
@@ -23,15 +23,13 @@ export class HealthController {
   }
 
   @Get("ready")
-  async ready(): Promise<ReadinessReport> {
+  async ready(@Res({ passthrough: true }) response: { status(code: number): unknown }): Promise<ReadinessReport> {
     const [postgres, sqs] = await Promise.all([this.checkPostgres(), this.checkSqs()]);
     const report: ReadinessReport = {
       status: postgres === "up" && sqs === "up" ? "ok" : "unavailable",
       checks: { postgres, sqs },
     };
-    if (report.status !== "ok") {
-      throw new ServiceUnavailableException(report);
-    }
+    response.status(report.status === "ok" ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE);
     return report;
   }
 
