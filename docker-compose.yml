@@ -1,0 +1,88 @@
+name: wagering
+
+x-aws-env: &aws-env
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ENDPOINT_URL: http://sqs:4566
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: wagering
+      POSTGRES_PASSWORD: wagering
+      POSTGRES_DB: wagering
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wagering -d wagering"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # MiniStack: MIT-licensed SQS-compatible emulator (allowed by the challenge as a LocalStack alternative).
+  # localstack/localstack:latest requires an auth token since 2026-03, which would break `docker compose up` for reviewers.
+  sqs:
+    image: ministackorg/ministack:1.5.20
+    ports:
+      - "4566:4566"
+
+  # One-shot job: creates the queues and exits. The API only starts after it succeeds.
+  sqs-init:
+    image: amazon/aws-cli:latest
+    entrypoint: ["sh", "/scripts/init-queues.sh"]
+    environment:
+      <<: *aws-env
+    volumes:
+      - ./docker/sqs/init-queues.sh:/scripts/init-queues.sh:ro
+    depends_on:
+      - sqs
+
+  # One-shot job: applies pending migrations before any API instance starts.
+  migrate:
+    build: .
+    command: ["bun", "run", "migration:up"]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: wagering
+      DB_PASSWORD: wagering
+      DB_NAME: wagering
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      <<: *aws-env
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: wagering
+      DB_PASSWORD: wagering
+      DB_NAME: wagering
+      SQS_WAGER_TRANSACTIONS_QUEUE: wager-transactions.fifo
+      SQS_WAGER_TRANSACTIONS_DLQ: wager-transactions-dlq.fifo
+      SQS_WALLET_EVENTS_QUEUE: wallet-events
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sqs-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://localhost:3000/health/live'); process.exit(r.ok ? 0 : 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
